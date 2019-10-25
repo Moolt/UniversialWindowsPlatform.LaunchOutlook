@@ -1,11 +1,10 @@
 ﻿using MsgKit;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using Windows.Storage;
-using Windows.Storage.AccessCache;
 using Windows.Storage.Pickers;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -13,38 +12,29 @@ namespace UniversialWindowsPlatform.LaunchOutlook
 {
     public sealed partial class MainPage : Page
     {
-        private readonly List<string> _fileTokens = new List<string>();
+        private const string MsgFilename = "tmp.msg";
+        private readonly string _msgFilepath;
 
         public MainPage()
         {
             this.InitializeComponent();
-        }
-
-        private async void OnOpenOutlook(object sender, RoutedEventArgs e)
-        {
-            var mailSender = new Sender(string.Empty, string.Empty, senderIsCreator: true);
-            var mail = new Email(mailSender, Subject.Text, true);
-            mail.Recipients.AddTo(To.Text);
-            mail.BodyText = Body.Text;
             var local = ApplicationData.Current.LocalCacheFolder.Path;
-            var filepath = Path.Combine(local, "foo.msg");
-
-            foreach(var attachment in Attachments)
-            {
-                mail.Attachments.Add(attachment.Path);
-            }
-
-            mail.Save(filepath);
-            mail.Dispose();
-            OpenOutlook(filepath);
+            _msgFilepath = Path.Combine(local, MsgFilename);
         }
 
-        private async void OpenOutlook(string filepath)
+        /// <summary>
+        /// Assembles an *.msg File, launches Outlook with that file and clears all attachments afterwards.
+        /// </summary>
+        private void OnOpenOutlook(object sender, RoutedEventArgs e)
         {
-            var msgFile = await StorageFile.GetFileFromPathAsync(filepath);
-            await Windows.System.Launcher.LaunchFileAsync(msgFile);
+            AssembleMail();
+            OpenOutlookAsync();
+            ClearAttachmentsAsync();
         }
 
+        /// <summary>
+        /// Opens a file picker dialog and copies the selected files to the local cache folder.
+        /// </summary>
         private async void OnAddAttachment(object sender, RoutedEventArgs e)
         {
             var openPicker = new FileOpenPicker();
@@ -60,8 +50,60 @@ namespace UniversialWindowsPlatform.LaunchOutlook
                 return;
             }
 
-            var copiedFile = await file.CopyAsync(ApplicationData.Current.LocalCacheFolder, file.Name, NameCollisionOption.ReplaceExisting);
+            var copiedFile = await file.CopyAsync(
+                ApplicationData.Current.LocalCacheFolder,
+                file.Name,
+                NameCollisionOption.ReplaceExisting);
             Attachments.Add(copiedFile);
+        }
+
+        /// <summary>
+        /// Assembles an *.msg file and saves it to the local cache folder.
+        /// Thanks to Sicos1977 for providing MsgKit: https://github.com/Sicos1977/MsgKit
+        /// </summary>
+        private void AssembleMail()
+        {
+            var mailSender = new Sender(string.Empty, string.Empty, senderIsCreator: true);
+            var mail = new Email(mailSender, Subject.Text, true);
+            mail.Recipients.AddTo(To.Text);
+            mail.BodyText = Body.Text;
+            var local = ApplicationData.Current.LocalCacheFolder.Path;
+            var filepath = Path.Combine(local, MsgFilename);
+
+            foreach (var attachment in Attachments)
+            {
+                mail.Attachments.Add(attachment.Path);
+            }
+
+            mail.Save(filepath);
+            mail.Dispose();
+        }
+
+        /// <summary>
+        /// Launches the locally saved tmp.msg file.
+        /// *.msg files are primarily associated with outlook, so opening an *.msg file will also open Outlook.
+        /// </summary>
+        private async void OpenOutlookAsync()
+        {
+            var msgFile = await StorageFile.GetFileFromPathAsync(_msgFilepath);
+            var result = await Windows.System.Launcher.LaunchFileAsync(msgFile);
+
+            if (!result)
+            {
+                await new MessageDialog("Outlook can not be found.").ShowAsync();
+            }
+        }
+
+        /// <summary>
+        /// Clears all cached attachments.
+        /// </summary>
+        private async void ClearAttachmentsAsync()
+        {
+            foreach (var cachedFile in Attachments)
+            {
+                await cachedFile.DeleteAsync();
+            }
+            Attachments.Clear();
         }
 
         public ObservableCollection<StorageFile> Attachments { get; } = new ObservableCollection<StorageFile>();
