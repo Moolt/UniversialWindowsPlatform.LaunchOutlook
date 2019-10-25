@@ -1,0 +1,69 @@
+﻿<Page
+	x:Class="UniversialWindowsPlatform.LaunchOutlook.MainPage"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition
+				Height="auto" />
+			<RowDefinition
+				Height="auto" />
+			<RowDefinition
+				Height="*" />
+		</Grid.RowDefinitions>
+		<CommandBar
+			OverflowButtonVisibility="Collapsed"
+			DefaultLabelPosition="Right"
+			Grid.Row="0"
+			Grid.ColumnSpan="2">
+			<AppBarButton
+				Label="Add attachment"
+				Click="OnAddAttachment"
+				Icon="OpenFile" />
+			<AppBarButton
+				Label="Open Outlook"
+				Click="OnOpenOutlook"
+				Icon="Mail" />
+		</CommandBar>
+		<StackPanel
+			Grid.Row="1"
+			Spacing="24"
+			Padding="16">
+			<TextBox
+				Header="Subject:"
+				x:Name="Subject"
+				Text="Some subject 😊" />
+			<TextBox
+				Header="To:"
+				x:Name="To"
+				Text="foo@bar.com" />
+			<TextBox
+				Header="Body:"
+				x:Name="Body"
+				Text="Mail content" />
+		</StackPanel>
+		<ListView
+			Grid.Row="2"
+			Padding="20"
+			Header="Attachments:"
+			ItemsSource="{x:Bind Attachments, Mode=OneWay}">
+			<ListView.ItemTemplate>
+				<DataTemplate>
+					<StackPanel
+						Orientation="Horizontal"
+						Spacing="8">
+						<TextBlock
+							Text="💾" />
+						<TextBlock
+							Text="{Binding Name}" />
+					</StackPanel>
+				</DataTemplate>
+			</ListView.ItemTemplate>
+		</ListView>
+	</Grid>
+</Page>
