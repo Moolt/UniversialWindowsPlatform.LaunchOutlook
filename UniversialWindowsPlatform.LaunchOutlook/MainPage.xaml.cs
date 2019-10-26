@@ -1,7 +1,9 @@
 ﻿using MsgKit;
+using OpenMcdf;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.UI.Popups;
@@ -25,9 +27,13 @@ namespace UniversialWindowsPlatform.LaunchOutlook
         /// <summary>
         /// Assembles an *.msg File, launches Outlook with that file and clears all attachments afterwards.
         /// </summary>
-        private void OnOpenOutlook(object sender, RoutedEventArgs e)
+        private async void OnOpenOutlook(object sender, RoutedEventArgs e)
         {
-            AssembleMail();
+            if (!await AssembleMail())
+            {
+                return;
+            }
+
             OpenOutlookAsync();
             ClearAttachmentsAsync();
         }
@@ -61,9 +67,9 @@ namespace UniversialWindowsPlatform.LaunchOutlook
         /// Assembles an *.msg file and saves it to the local cache folder.
         /// Thanks to Sicos1977 for providing MsgKit: https://github.com/Sicos1977/MsgKit
         /// </summary>
-        private void AssembleMail()
+        private async Task<bool> AssembleMail()
         {
-            var mailSender = new Sender(string.Empty, string.Empty, senderIsCreator: true);
+            var mailSender = new Sender(string.Empty, string.Empty);
             var mail = new Email(mailSender, Subject.Text, true);
             mail.Recipients.AddTo(To.Text);
             mail.BodyText = Body.Text;
@@ -75,8 +81,18 @@ namespace UniversialWindowsPlatform.LaunchOutlook
                 mail.Attachments.Add(attachment.Path);
             }
 
-            mail.Save(filepath);
+            try
+            {
+                mail.Save(filepath);
+            }
+            catch (CFException)
+            {
+                await new MessageDialog("An Outlook instance is already opened.").ShowAsync();
+                return false;
+            }
+
             mail.Dispose();
+            return true;
         }
 
         /// <summary>
